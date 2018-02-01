@@ -1,0 +1,13 @@
+# Vim ignores
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+
+# built applications
+dna-writer
+smartvio-brain
+smartvio-test
+src/*.o
+szg_i2cread
+szg_i2cwrite
