@@ -24,6 +24,8 @@
 // 
 //------------------------------------------------------------------------
 
+#include "json.hpp"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <errno.h>
@@ -35,7 +37,12 @@
 #include <getopt.h>
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
+
+extern "C" {
 #include "syzygy.h"
+}
+
+using json = nlohmann::json;
 
 #define I2C_CHECK_COUNT 2000
 
@@ -45,61 +52,57 @@
 // Group 2 has 3 ports, FPGA range is 1.2 to 3.3 V
 
 szgSmartVIOConfig svio = {
-	.num_ports = SVIO_NUM_PORTS,
-	.num_groups = SVIO_NUM_GROUPS,
-	.svio_results = {0, 0},
-	.group_masks = {0x0001, 0x0002},
-	.ports = {
+	SVIO_NUM_PORTS, SVIO_NUM_GROUPS, {0,0}, {0x1, 0x2}, {
 		{
 			// Group 1
-			.i2c_addr        = 0x00,
-			.present         = 1,
-			.attr            = 0x0000,
-			.group           = 0,
-			.doublewide_mate = 0,
-			.range_count     = 1,
-			.ranges          = { {120, 330}, {0,0}, {0,0}, {0,0} },
+			0x00, // i2c_addr
+			1,    // present
+			0,    // group
+			0x00, // attr
+			0,    // doublewide_mate
+			1,    // range_count
+			{ {120, 330}, {0,0}, {0,0}, {0,0} } // ranges
 		}, {
-			.i2c_addr        = 0x30,
-			.present         = 0,
-			.attr            = 0x0000,
-			.group           = 0,
-			.doublewide_mate = 0,
-			.range_count     = 0,
-			.ranges          = { {0,0}, {0,0}, {0,0}, {0,0} }
+			0x30, // i2c_addr
+			0,    // present
+			0,    // group
+			0x00, // attr
+			0,    // doublewide_mate
+			0,    // range_count
+			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
 		}, {
 			// Group 2
-			.i2c_addr        = 0x00,
-			.present         = 1,
-			.attr            = 0x0000,
-			.group           = 1,
-			.doublewide_mate = 1,
-			.range_count     = 1,
-			.ranges          = { {120, 330}, {0,0}, {0,0}, {0,0} },
+			0x00, // i2c_addr
+			1,    // present
+			1,    // group
+			0x00, // attr
+			1,    // doublewide_mate
+			1,    // range_count
+			{ {120, 330}, {0,0}, {0,0}, {0,0} } // ranges
 		}, {
-			.i2c_addr        = 0x31,
-			.present         = 0,
-			.attr            = 0x0000,
-			.group           = 1,
-			.doublewide_mate = 1,
-			.range_count     = 0,
-			.ranges          = { {0,0}, {0,0}, {0,0}, {0,0} },
+			0x31, // i2c_addr
+			0,    // present
+			1,    // group
+			0x00, // attr
+			1,    // doublewide_mate
+			0,    // range_count
+			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
 		}, {
-			.i2c_addr        = 0x32,
-			.present         = 0,
-			.attr            = 0x0000,
-			.group           = 1,
-			.doublewide_mate = 1,
-			.range_count     = 0,
-			.ranges          = { {0,0}, {0,0}, {0,0}, {0,0} },
+			0x32, // i2c_addr
+			0,    // present
+			1,    // group
+			0x00, // attr
+			1,    // doublewide_mate
+			0,    // range_count
+			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
 		}, {
-			.i2c_addr        = 0x33,
-			.present         = 0,
-			.attr            = 0x0000,
-			.group           = 1,
-			.doublewide_mate = 1,
-			.range_count     = 0,
-			.ranges          = { {0,0}, {0,0}, {0,0}, {0,0} },
+			0x33, // i2c_addr
+			0,    // present
+			1,    // group
+			0x00, // attr
+			1,    // doublewide_mate
+			0,    // range_count
+			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
 		}
 	}
 };
@@ -130,7 +133,7 @@ int i2cDetect (int i2c_file, int i2c_addr)
 int i2cWrite (int i2c_file, int i2c_addr, uint16_t sub_addr,
               int sub_addr_length, int length, uint8_t data[32])
 {
-	uint8_t *buffer = malloc((length * sizeof(uint8_t)) + sub_addr_length);
+	uint8_t *buffer = (uint8_t *)malloc((length * sizeof(uint8_t)) + sub_addr_length);
 	int i;
 
 	memcpy(buffer + sub_addr_length, data, length * sizeof(uint8_t));
@@ -230,7 +233,6 @@ int readMCU (int i2c_file, uint16_t port_addr, int sub_addr, uint8_t *data,
              int length)
 {
 	int current_sub_addr, temp_length;
-	uint16_t dna_length;
 
 	// Useful for debug
 	//printf("Reading %d bytes from 0x%X, sub-address 0x%X\n", length, port_addr, sub_addr);
@@ -279,7 +281,7 @@ int dumpDNA (int i2c_file, uint16_t port_addr, uint8_t *data)
 // Read DNA and determine a SmartVIO solution, stored in 'svio1' and 'svio2'
 int readDNA (int i2c_file, uint32_t *svio1, uint32_t *svio2)
 {
-	uint8_t i, j;
+	uint8_t i;
 	int vmin;
 	uint8_t dna_buf[64];
 
@@ -373,14 +375,22 @@ int applyVIO (int i2c_file, uint32_t svio1, uint32_t svio2)
 
 
 // Print strings, Read DNA must have been run first to populate the svio struct
-int printVIOStrings (int i2c_file)
+int printVIOStrings (json &json_handler, int i2c_file)
 {
 	uint8_t temp_string[257];
 	int i;
+	int j = 0;
 
 	for (i = 0; i < SVIO_NUM_PORTS; i++) {
-		if (svio.ports[i].i2c_addr == 0x00 || svio.ports[i].present == 0) {
-			// don't print anything for FPGA "ports" or non-present ports
+		if (svio.ports[i].i2c_addr == 0x00) {
+			// don't print anything for FPGA "ports"
+			continue;
+		}
+
+		if (svio.ports[i].present == 0) {
+			// just increment the port counter for non-present ports
+			json_handler["port"][j] = nullptr;
+			j++;
 			continue;
 		}
 
@@ -391,7 +401,11 @@ int printVIOStrings (int i2c_file)
 
 		temp_string[svio.ports[i].mfr_length] = '\0';
 
-		printf("Port 0x%X Manufacturer: %s\n", svio.ports[i].i2c_addr, temp_string);
+		if (!json_handler.is_null()) {
+			json_handler["port"][j]["manufacturer"] = std::string((char*) temp_string);
+		} else {
+			printf("Port 0x%X Manufacturer: %s\n", svio.ports[i].i2c_addr, temp_string);
+		}
 
 		// retrieve product name
 		readMCU(i2c_file, svio.ports[i].i2c_addr,
@@ -400,7 +414,11 @@ int printVIOStrings (int i2c_file)
 
 		temp_string[svio.ports[i].product_name_length] = '\0';
 
-		printf("Product Name: %s\n", temp_string);
+		if (!json_handler.is_null()) {
+			json_handler["port"][j]["product_name"] = std::string((char*) temp_string);
+		} else {
+			printf("Product Name: %s\n", temp_string);
+		}
 
 		// retrieve product model
 		readMCU(i2c_file, svio.ports[i].i2c_addr,
@@ -409,7 +427,11 @@ int printVIOStrings (int i2c_file)
 
 		temp_string[svio.ports[i].product_model_length] = '\0';
 
-		printf("Product Model: %s\n", temp_string);
+		if (!json_handler.is_null()) {
+			json_handler["port"][j]["product_model"] = std::string((char*) temp_string);
+		} else {
+			printf("Product Model: %s\n", temp_string);
+		}
 
 		// retrieve product version
 		readMCU(i2c_file, svio.ports[i].i2c_addr,
@@ -418,7 +440,11 @@ int printVIOStrings (int i2c_file)
 
 		temp_string[svio.ports[i].product_version_length] = '\0';
 
-		printf("Version: %s\n", temp_string);
+		if (!json_handler.is_null()) {
+			json_handler["port"][j]["product_version"] = std::string((char*) temp_string);
+		} else {
+			printf("Version: %s\n", temp_string);
+		}
 
 		// retrieve serial
 		readMCU(i2c_file, svio.ports[i].i2c_addr,
@@ -427,7 +453,12 @@ int printVIOStrings (int i2c_file)
 
 		temp_string[svio.ports[i].serial_number_length] = '\0';
 
-		printf("Serial: %s\n", temp_string);
+		if (!json_handler.is_null()) {
+			json_handler["port"][j]["serial_number"] = std::string((char*) temp_string);
+		} else {
+			printf("Serial: %s\n", temp_string);
+		}
+		j++;
 	}
 
 	return 0;
@@ -435,7 +466,7 @@ int printVIOStrings (int i2c_file)
 
 
 // Help text
-int printHelp (char *progname)
+void printHelp (char *progname)
 {
 	printf("Usage: %s [option [argument]] <i2c device>\n", progname);
 	printf("  <i2c device> is required for all commands. It must contain the\n");
@@ -444,6 +475,7 @@ int printHelp (char *progname)
 	printf("  Exactly one of the following options must be specified:\n");
 	printf("    -r - run smartVIO, queries attached MCU's and sets voltages accordingly\n");
 	printf("    -s - set VIO voltages to the values provided by -1 and -2 options\n");
+	printf("    -j - print out a JSON object with DNA and SmartVIO information\n");
 	printf("    -h - print this text\n");
 	printf("    -w <filename> - write a binary DNA to a peripheral, takes the DNA filename\n");
 	printf("                    as an argument\n");
@@ -471,6 +503,7 @@ int main (int argc, char *argv[])
 	// Options flags
 	int rflag = 0;
 	int sflag = 0;
+	int jflag = 0;
 	int hflag = 0;
 	int wflag = 0;
 	int dflag = 0;
@@ -484,10 +517,11 @@ int main (int argc, char *argv[])
 	int dna_length;
 	int periph_num = 0;
 	int curr_opt;
+	json json_handler;
 	uint16_t peripheral_address[] = {0x30, 0x31, 0x32, 0x33};
 
 	// Parse args
-	while ((curr_opt = getopt(argc, argv, "rs1:2:w:d:p:h")) != -1) {
+	while ((curr_opt = getopt(argc, argv, "rsj1:2:w:d:p:h")) != -1) {
 		switch(curr_opt)
 		{
 			case 'r':
@@ -495,6 +529,9 @@ int main (int argc, char *argv[])
 				break;
 			case 's':
 				sflag = 1;
+				break;
+			case 'j':
+				jflag = 1;
 				break;
 			case '1':
 				if (optarg){ 
@@ -568,7 +605,7 @@ int main (int argc, char *argv[])
 		exit(1);
 	}
 
-	if ((rflag + sflag + hflag + wflag + dflag) > 1) {
+	if ((rflag + sflag + jflag + hflag + wflag + dflag) > 1) {
 		printf("Invalid set of options specified.\n");
 		printHelp(argv[0]);
 		return 0;
@@ -592,9 +629,19 @@ int main (int argc, char *argv[])
 
 		applyVIO(i2c_file, svio1, svio2);
 
-		printVIOStrings(i2c_file);
+		printVIOStrings(json_handler, i2c_file);
 	} else if (sflag == 1) { // Apply a user specified VIO
 		applyVIO(i2c_file, svio1, svio2);
+	} else if (jflag == 1) {
+		readDNA(i2c_file, &svio1, &svio2);
+
+		json_handler["vio"][0] = svio1;
+		json_handler["vio"][1] = svio2;
+
+		printVIOStrings(json_handler, i2c_file);
+
+		printf(json_handler.dump().c_str());
+		printf("\n");
 	} else if (wflag == 1) { // Write DNA from a file to a peripheral
 		if (read(dna_file, &dna_length, 2) != 2) {
 			printf("Error reading from DNA file\n");
