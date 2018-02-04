@@ -6,8 +6,8 @@ CFLAGS += -Wall
 all: smartvio-brain smartvio-test szg_i2cwrite szg_i2cread dna-writer
 
 
-smartvio-brain: src/smartvio-brain.c src/syzygy.o
-	$(CC) $(CFLAGS) -I $(INCLUDEDIR) -o $@ $^
+smartvio-brain: src/smartvio-brain.cpp src/syzygy.o
+	$(CXX) $(CFLAGS) -std=c++11 -I $(INCLUDEDIR) -o $@ $^
 
 
 smartvio-test: src/smartvio-test.cpp src/syzygy.o
