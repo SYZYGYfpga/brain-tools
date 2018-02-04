@@ -30,3 +30,7 @@ src/syzygy.o: src/syzygy.c
 	$(CC) $(CFLAGS) -I $(INCLUDEDIR) -o $@ -c $^
 
 
+.PHONY: clean
+
+clean:
+	rm -f smartvio-brain smartvio-test szg_i2cwrite szg_i2cread dna-writer src/syzygy.o
