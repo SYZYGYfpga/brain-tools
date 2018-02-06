@@ -514,7 +514,7 @@ int main (int argc, char *argv[])
 	uint8_t dna_buf[1320];
 	int i2c_file;
 	int dna_file;
-	int dna_length;
+	int dna_length = 0;
 	int periph_num = 0;
 	int curr_opt;
 	json json_handler;
