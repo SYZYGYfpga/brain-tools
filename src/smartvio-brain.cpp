@@ -114,8 +114,7 @@ int i2cDetect (int i2c_file, int i2c_addr)
 
 	// Set I2C address
 	if (ioctl(i2c_file, I2C_SLAVE, i2c_addr) < 0) {
-		printf("Error setting i2c address\n");
-		exit(1);
+		return -1;
 	}
 
 	data[0] = 0x00;
@@ -140,8 +139,7 @@ int i2cWrite (int i2c_file, int i2c_addr, uint16_t sub_addr,
 
 	// Set I2C address
 	if (ioctl(i2c_file, I2C_SLAVE, i2c_addr) < 0) {
-		printf("Error setting I2C address during write\n");
-		exit(1);
+		return -1;
 	}
 
 	if (sub_addr_length == 2) {
@@ -161,11 +159,8 @@ int i2cWrite (int i2c_file, int i2c_addr, uint16_t sub_addr,
 		}
 	}
 
-	// We gave up trying to write to the MCU
-	printf("Error writing to device\n");
-	exit(1);
-
-	return 0;
+	// We gave up trying to write
+	return -1;
 }
 
 
@@ -177,8 +172,7 @@ int i2cRead (int i2c_file, int i2c_addr, uint16_t sub_addr,
 
 	// Set I2C address
 	if (ioctl(i2c_file, I2C_SLAVE, i2c_addr) < 0) {
-		printf("Error setting I2C address during read\n");
-		exit(1);
+		return -1;
 	}
 
 	if (sub_addr_length == 2) {
@@ -189,13 +183,11 @@ int i2cRead (int i2c_file, int i2c_addr, uint16_t sub_addr,
 	}
 
 	if (write(i2c_file, temp_buf, sub_addr_length) != sub_addr_length) {
-		printf("Error setting I2C sub-address during read\n");
-		exit(1);
+		return -1;
 	}
 
 	if (read(i2c_file, data, length) != length) {
-		printf("Error during read\n");
-		exit(1);
+		return -1;
 	}
 
 	return 0;
@@ -217,8 +209,7 @@ int writeMCU (int i2c_file, uint16_t port_addr, int sub_addr, uint8_t *data,
 
 		if (i2cWrite(i2c_file, port_addr, current_sub_addr, 2, temp_length,
 		             &data[(current_sub_addr - sub_addr)]) != 0) {
-			printf("Error writing to MCU, exiting\n");
-			exit(1);
+			return -1;
 		}
 
 		current_sub_addr += temp_length;
@@ -244,14 +235,12 @@ int readMCU (int i2c_file, uint16_t port_addr, int sub_addr, uint8_t *data,
 
 		if (i2cRead(i2c_file, port_addr, current_sub_addr, 2, temp_length,
 		            &data[(current_sub_addr - sub_addr)]) != 0) {
-			printf("Error reading DNA, exiting\n");
-			exit(1);
+			return -1;
 		}
 
 		current_sub_addr += temp_length;
 		length -= temp_length;
 	}
-
 
 	return 0;
 }
@@ -263,16 +252,17 @@ int dumpDNA (int i2c_file, uint16_t port_addr, uint8_t *data)
 	uint16_t dna_length;
 
 	if (i2cRead(i2c_file, port_addr, 0x8000, 2, 2, (uint8_t *)&dna_length) != 0) {
-		printf("Error reading DNA, exiting\n");
-		exit(1);
+		return -1;
 	}
 
 	if (dna_length > 1318) {
 		printf("Invalid DNA Length\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	readMCU(i2c_file, port_addr, 0x8000, data, dna_length);
+	if (readMCU(i2c_file, port_addr, 0x8000, data, dna_length) != 0) {
+		return -1;
+	}
 
 	return dna_length;
 }
@@ -299,13 +289,11 @@ int readDNA (int i2c_file, uint32_t *svio1, uint32_t *svio2)
 		// Read the full DNA Header
 		if (readMCU(i2c_file, svio.ports[i].i2c_addr, 0x8000, dna_buf,
 		            SZG_DNA_HEADER_LENGTH_V1) != 0) {
-			printf("Error reading from I2C Device, cancelling SmartVIO\n");
-			exit(1);
+			return -1;
 		}
 
 		if (szgParsePortDNA(i, &svio, dna_buf, SZG_DNA_HEADER_LENGTH_V1) != 0) {
-			printf("Error parsing DNA, cancelling SmartVIO\n");
-			exit(1);
+			return -1;
 		}
 
 		if (svio.ports[i].attr & SZG_ATTR_LVDS) {
@@ -344,30 +332,42 @@ int applyVIO (int i2c_file, uint32_t svio1, uint32_t svio2)
 	
 	// Bounds check to be sure that everything is good to go
 	if ((svio1 < 120) || (svio1 > 330)) {
-		svio1 = 0;
+		printf("Invalid SmartVIO solution\n");
+		exit(EXIT_FAILURE);
 	}
 	if ((svio2 < 120) || (svio2 > 330)) {
-		svio2 = 0;
+		printf("Invalid SmartVIO solution\n");
+		exit(EXIT_FAILURE);
 	}
 
 	// Disable write protect on TPS65400
 	temp_data[0] = 0x20;
-	i2cWrite(i2c_file, 0x6a, 0x10, 1, 1, temp_data);
+	if (i2cWrite(i2c_file, 0x6a, 0x10, 1, 1, temp_data) != 0) {
+		return -1;
+	}
 
 	// TPS65400 VREF = VOUT * 531 - 60
 	if (svio1 != 0) {
 		printf("Setting VIO1 to: %d\n", svio1);
 		temp_data[0] = 0x0;
-		i2cWrite(i2c_file, 0x6a, 0x00, 1, 1, temp_data);
+		if (i2cWrite(i2c_file, 0x6a, 0x00, 1, 1, temp_data) != 0) {
+			return -1;
+		}
 		temp_data[0] = svio1 * 531 / 1000 - 60;
-		i2cWrite(i2c_file, 0x6a, 0xd8, 1, 1, temp_data);
+		if (i2cWrite(i2c_file, 0x6a, 0xd8, 1, 1, temp_data) != 0) {
+			return -1;
+		}
 	}
 	if (svio2 != 0) {
 		printf("Setting VIO2 to: %d\n", svio2);
 		temp_data[0] = 0x1;
-		i2cWrite(i2c_file, 0x6a, 0x00, 1, 1, temp_data);
+		if (i2cWrite(i2c_file, 0x6a, 0x00, 1, 1, temp_data) != 0) {
+			return -1;
+		}
 		temp_data[0] = svio2 * 531 / 1000 - 60;
-		i2cWrite(i2c_file, 0x6a, 0xd8, 1, 1, temp_data);
+		if (i2cWrite(i2c_file, 0x6a, 0xd8, 1, 1, temp_data) != 0) {
+			return -1;
+		}
 	}
 
 	return 0;
@@ -388,16 +388,21 @@ int printVIOStrings (json &json_handler, int i2c_file)
 		}
 
 		if (svio.ports[i].present == 0) {
+			if (!json_handler.is_null()) {
+				json_handler["port"][j] = nullptr;
+			}
+
 			// just increment the port counter for non-present ports
-			json_handler["port"][j] = nullptr;
 			j++;
 			continue;
 		}
 
 		// retrieve manufacturer
-		readMCU(i2c_file, svio.ports[i].i2c_addr,
+		if (readMCU(i2c_file, svio.ports[i].i2c_addr,
 		        0x8000 + svio.ports[i].mfr_offset, temp_string,
-		        svio.ports[i].mfr_length);
+		        svio.ports[i].mfr_length) != 0) {
+			return -1;
+		}
 
 		temp_string[svio.ports[i].mfr_length] = '\0';
 
@@ -408,9 +413,11 @@ int printVIOStrings (json &json_handler, int i2c_file)
 		}
 
 		// retrieve product name
-		readMCU(i2c_file, svio.ports[i].i2c_addr,
+		if (readMCU(i2c_file, svio.ports[i].i2c_addr,
 		        0x8000 + svio.ports[i].product_name_offset, temp_string,
-		        svio.ports[i].product_name_length);
+		        svio.ports[i].product_name_length) != 0) {
+			return -1;
+		}
 
 		temp_string[svio.ports[i].product_name_length] = '\0';
 
@@ -421,9 +428,11 @@ int printVIOStrings (json &json_handler, int i2c_file)
 		}
 
 		// retrieve product model
-		readMCU(i2c_file, svio.ports[i].i2c_addr,
+		if (readMCU(i2c_file, svio.ports[i].i2c_addr,
 		        0x8000 + svio.ports[i].product_model_offset, temp_string,
-		        svio.ports[i].product_model_length);
+		        svio.ports[i].product_model_length) != 0) {
+			return -1;
+		}
 
 		temp_string[svio.ports[i].product_model_length] = '\0';
 
@@ -434,9 +443,11 @@ int printVIOStrings (json &json_handler, int i2c_file)
 		}
 
 		// retrieve product version
-		readMCU(i2c_file, svio.ports[i].i2c_addr,
+		if (readMCU(i2c_file, svio.ports[i].i2c_addr,
 		        0x8000 + svio.ports[i].product_version_offset, temp_string,
-		        svio.ports[i].product_version_length);
+		        svio.ports[i].product_version_length) != 0) {
+			return -1;
+		}
 
 		temp_string[svio.ports[i].product_version_length] = '\0';
 
@@ -447,9 +458,11 @@ int printVIOStrings (json &json_handler, int i2c_file)
 		}
 
 		// retrieve serial
-		readMCU(i2c_file, svio.ports[i].i2c_addr,
+		if (readMCU(i2c_file, svio.ports[i].i2c_addr,
 		        0x8000 + svio.ports[i].serial_number_offset, temp_string,
-		        svio.ports[i].serial_number_length);
+		        svio.ports[i].serial_number_length) != 0) {
+			return -1;
+		}
 
 		temp_string[svio.ports[i].serial_number_length] = '\0';
 
@@ -538,7 +551,7 @@ int main (int argc, char *argv[])
 					svio1 = atoi(optarg);
 				} else {
 					printf("No argument specified for -1\n");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case '2':
@@ -546,7 +559,7 @@ int main (int argc, char *argv[])
 					svio2 = atoi(optarg);
 				} else {
 					printf("No argument specified for -2\n");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case 'w':
@@ -555,7 +568,7 @@ int main (int argc, char *argv[])
 					strcpy(dna_filename, optarg);
 				} else {
 					printf("No argument specified for -w\n");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case 'd':
@@ -564,7 +577,7 @@ int main (int argc, char *argv[])
 					strcpy(dna_filename, optarg);
 				} else {
 					printf("No argument specified for -d\n");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case 'p':
@@ -572,16 +585,18 @@ int main (int argc, char *argv[])
 					periph_num = strtol(optarg, NULL, 0) - 1;
 				} else {
 					printf("No argument specified for -p\n");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case 'h':
 				hflag = 1;
 				break;
 			case '?':
-				exit(1);
+				printHelp(argv[0]);
+				exit(EXIT_FAILURE);
 			default:
-				exit(1);
+				printHelp(argv[0]);
+				exit(EXIT_FAILURE);
 		}
 	}
 
@@ -595,14 +610,14 @@ int main (int argc, char *argv[])
 		strcpy(i2c_filename, argv[optind]);
 	} else {
 		printf("I2C Device required.\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	// Open I2C file
 	i2c_file = open(i2c_filename, O_RDWR);
 	if (i2c_file < 0) {
 		printf("Error opening i2c device\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if ((rflag + sflag + jflag + hflag + wflag + dflag) > 1) {
@@ -614,24 +629,36 @@ int main (int argc, char *argv[])
 	if ((wflag == 1) || (dflag == 1)) {
 		if (i2cDetect(i2c_file, peripheral_address[periph_num]) != 0) {
 			printf("Peripheral at %X not found\n", peripheral_address[periph_num]);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		dna_file = open(dna_filename, O_RDWR | O_CREAT, 0666);
 		if (dna_file < 0) {
 			printf("Error opening DNA file\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (rflag == 1) { // Run the main SmartVIO procedure
-		readDNA(i2c_file, &svio1, &svio2);
+		if (readDNA(i2c_file, &svio1, &svio2) != 0) {
+			printf("Error obtaining a SmartVIO solution\n");
+			exit(EXIT_FAILURE);
+		}
 
-		applyVIO(i2c_file, svio1, svio2);
+		if (applyVIO(i2c_file, svio1, svio2) != 0) {
+			printf("Error applying SmartVIO settings to power supplies\n");
+			exit(EXIT_FAILURE);
+		}
 
-		printVIOStrings(json_handler, i2c_file);
+		if (printVIOStrings(json_handler, i2c_file) != 0) {
+			printf("Error retrieving DNA strings\n");
+			exit(EXIT_FAILURE);
+		}
 	} else if (sflag == 1) { // Apply a user specified VIO
-		applyVIO(i2c_file, svio1, svio2);
+		if (applyVIO(i2c_file, svio1, svio2) != 0) {
+			printf("Error applying SmartVIO settings to power supplies\n");
+			exit(EXIT_FAILURE);
+		}
 	} else if (jflag == 1) {
 		readDNA(i2c_file, &svio1, &svio2);
 
@@ -645,27 +672,36 @@ int main (int argc, char *argv[])
 	} else if (wflag == 1) { // Write DNA from a file to a peripheral
 		if (read(dna_file, &dna_length, 2) != 2) {
 			printf("Error reading from DNA file\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		if (dna_length > 1318) {
 			printf("Invalid DNA Length\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		lseek(dna_file, 0, SEEK_SET);
 		if (read(dna_file, dna_buf, dna_length) != dna_length) {
 			printf("Error reading from DNA file\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
-		writeMCU(i2c_file, peripheral_address[periph_num], 0x8000, dna_buf, dna_length);
+		if (writeMCU(i2c_file, peripheral_address[periph_num], 0x8000,
+		             dna_buf, dna_length) != 0) {
+			printf("Error writing to the MCU\n");
+			exit(EXIT_FAILURE);
+		}
 	} else if (dflag == 1) { // Dump DNA from a peripheral to a file
 		dna_length = dumpDNA(i2c_file, peripheral_address[periph_num], dna_buf);
+
+		if (dna_length < 0) {
+			printf("Error reading DNA from device\n");
+			exit(EXIT_FAILURE);
+		}
 		
 		if (write(dna_file, dna_buf, dna_length) != dna_length) {
 			printf("Error writing to DNA file\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	} else {
 		printHelp(argv[0]);
