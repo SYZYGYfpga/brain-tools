@@ -316,7 +316,7 @@ int readDNA (int i2c_file, uint32_t *svio1, uint32_t *svio2)
 					break;
 				case 1:
 					svio.ports[2].ranges[0].min = 250;
-					svio.ports[2].ranges[0].min = 250;
+					svio.ports[2].ranges[0].max = 250;
 					break;
 			}
 		}
