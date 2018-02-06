@@ -6,6 +6,7 @@
 start() {
 	# At this point the VIO supplies are off, adjust their VREF
 	smartvio -r /dev/i2c-1
+	smartvio_returnval=$?
 
 	# Set the enable lines high
 	echo 906 > /sys/class/gpio/export
@@ -14,8 +15,14 @@ start() {
 	echo out > /sys/class/gpio/gpio906/direction
 	echo out > /sys/class/gpio/gpio913/direction
 
-	echo 1 > /sys/class/gpio/gpio906/value
-	echo 1 > /sys/class/gpio/gpio913/value
+	if [ "$smartvio_returnval" -eq "0" ]; then
+		echo 1 > /sys/class/gpio/gpio906/value
+		echo 1 > /sys/class/gpio/gpio913/value
+	else
+		echo "SmartVIO Failed, keeping VIO rails off"
+		echo 0 > /sys/class/gpio/gpio906/value
+		echo 0 > /sys/class/gpio/gpio913/value
+	fi
 }
 
 stop() {
