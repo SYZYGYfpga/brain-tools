@@ -662,8 +662,14 @@ int main (int argc, char *argv[])
 	} else if (jflag == 1) {
 		readDNA(i2c_file, &svio1, &svio2);
 
-		json_handler["vio"][0] = svio1;
-		json_handler["vio"][1] = svio2;
+		// Bounds check on the svio ranges
+		if ((svio1 < 120) || (svio1 > 330) || (svio2 < 120) || (svio2 > 330)) {
+			json_handler["vio"][0] = 0;
+			json_handler["vio"][1] = 0;
+		} else {
+			json_handler["vio"][0] = svio1;
+			json_handler["vio"][1] = svio2;
+		}
 
 		printVIOStrings(json_handler, i2c_file);
 
