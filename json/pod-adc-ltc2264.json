@@ -10,8 +10,8 @@
 		{ "min": 0,   "max": 0 },
 		{ "min": 0,   "max": 0 }
 		],
-	"manufacturer_name": "Opal Kelly",
-	"product_name":      "ADC Pod",
-	"product_model":     "POD-ADC",
-	"product_version":   "A01"
+	"manufacturer_name": "Opal Kelly Incorporated",
+	"product_name":      "POD-ADC-LTC226x",
+	"product_model":     "POD-ADC-LTC2264",
+	"product_version":   "A"
 }
