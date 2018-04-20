@@ -77,9 +77,12 @@ int main(int argc, char *argv[])
 	dna_header[SZG_DNA_PTR_DNA_REQUIRED_MAJOR] = 0;
 	dna_header[SZG_DNA_PTR_DNA_REQUIRED_MINOR] = 0;
 
-	dna_header[SZG_DNA_PTR_MAX_5V_LOAD] = dna_json["max_5v_load"].get<uint8_t>();
-	dna_header[SZG_DNA_PTR_MAX_33V_LOAD] = dna_json["max_3v3_load"].get<uint8_t>();
-	dna_header[SZG_DNA_PTR_MAX_VIO_LOAD] = dna_json["max_vio_load"].get<uint8_t>();
+	dna_header[SZG_DNA_PTR_MAX_5V_LOAD] = dna_json["max_5v_load"].get<uint16_t>() & 0xFF;
+	dna_header[SZG_DNA_PTR_MAX_5V_LOAD + 1] = dna_json["max_5v_load"].get<uint16_t>() >> 8;
+	dna_header[SZG_DNA_PTR_MAX_33V_LOAD] = dna_json["max_3v3_load"].get<uint16_t>() & 0xFF;
+	dna_header[SZG_DNA_PTR_MAX_33V_LOAD + 1] = dna_json["max_3v3_load"].get<uint16_t>() >> 8;
+	dna_header[SZG_DNA_PTR_MAX_VIO_LOAD] = dna_json["max_vio_load"].get<uint16_t>() & 0xFF;
+	dna_header[SZG_DNA_PTR_MAX_VIO_LOAD + 1] = dna_json["max_vio_load"].get<uint16_t>() >> 8;
 
 	dna_header[SZG_DNA_PTR_ATTRIBUTES] |= dna_json["is_lvds"].get<bool>() ?
 	    SZG_ATTR_LVDS : 0;
