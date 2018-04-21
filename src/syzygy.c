@@ -90,8 +90,11 @@ szgParsePortDNA(int n, szgSmartVIOConfig *svio, unsigned char *dnaBuf, int lengt
 	}
 
 	// If the DOUBLEWIDE attribute is set, we need to add the mating group to the dependents.
+	// We also need to create the reciprocal relationship so that the mating group includes
+	// the present port.
 	if (svio->ports[n].attr & SZG_ATTR_DOUBLEWIDE) {
 		svio->group_masks[svio->ports[n].group] |= (1 << svio->ports[n].doublewide_mate);
+		svio->group_masks[svio->ports[n].doublewide_mate] |= (1 << svio->ports[n].group);
 	}
 
 	offset = SZG_DNA_HEADER_LENGTH_V1;
