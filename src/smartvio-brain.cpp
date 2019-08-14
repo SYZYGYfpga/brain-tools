@@ -58,7 +58,10 @@ szgSmartVIOConfig svio = {
 			0x00, // i2c_addr
 			1,    // present
 			0,    // group
+			0,    // req_ver_major
+			0,    // req_ver_minor
 			0x00, // attr
+			0x00, // port_attr
 			0,    // doublewide_mate
 			1,    // range_count
 			{ {120, 330}, {0,0}, {0,0}, {0,0} } // ranges
@@ -66,7 +69,10 @@ szgSmartVIOConfig svio = {
 			0x30, // i2c_addr
 			0,    // present
 			0,    // group
+			0,    // req_ver_major
+			0,    // req_ver_minor
 			0x00, // attr
+			0x00, // port_attr
 			0,    // doublewide_mate
 			0,    // range_count
 			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
@@ -75,7 +81,10 @@ szgSmartVIOConfig svio = {
 			0x00, // i2c_addr
 			1,    // present
 			1,    // group
+			0,    // req_ver_major
+			0,    // req_ver_minor
 			0x00, // attr
+			0x00, // port_attr
 			1,    // doublewide_mate
 			1,    // range_count
 			{ {120, 330}, {0,0}, {0,0}, {0,0} } // ranges
@@ -83,7 +92,10 @@ szgSmartVIOConfig svio = {
 			0x31, // i2c_addr
 			0,    // present
 			1,    // group
+			0,    // req_ver_major
+			0,    // req_ver_minor
 			0x00, // attr
+			0x00, // port_attr
 			1,    // doublewide_mate
 			0,    // range_count
 			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
@@ -91,7 +103,10 @@ szgSmartVIOConfig svio = {
 			0x32, // i2c_addr
 			0,    // present
 			1,    // group
+			0,    // req_ver_major
+			0,    // req_ver_minor
 			0x00, // attr
+			0x00, // port_attr
 			1,    // doublewide_mate
 			0,    // range_count
 			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
@@ -99,7 +114,10 @@ szgSmartVIOConfig svio = {
 			0x33, // i2c_addr
 			0,    // present
 			1,    // group
+			0,    // req_ver_major
+			0,    // req_ver_minor
 			0x00, // attr
+			0x00, // port_attr
 			1,    // doublewide_mate
 			0,    // range_count
 			{ {0, 0}, {0,0}, {0,0}, {0,0} } // ranges
