@@ -3,10 +3,14 @@ INCLUDEDIR = include
 
 CFLAGS += -Wall
 
-all: smartvio-brain szg_i2cwrite szg_i2cread
+all: smartvio-brain szg_i2cwrite szg_i2cread sequencer-brain
 
 
 smartvio-brain: src/smartvio-brain.cpp src/syzygy.o
+	$(CXX) $(CFLAGS) -std=c++11 -I $(INCLUDEDIR) -o $@ $^
+
+
+sequencer-brain: src/sequencer-brain.cpp
 	$(CXX) $(CFLAGS) -std=c++11 -I $(INCLUDEDIR) -o $@ $^
 
 
