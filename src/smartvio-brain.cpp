@@ -349,11 +349,11 @@ int applyVIO (int i2c_file, uint32_t svio1, uint32_t svio2)
 	uint8_t temp_data[2];
 	
 	// Bounds check to be sure that everything is good to go
-	if (svio1 != 0 && (svio1 < 120) || (svio1 > 330)) {
+	if (svio1 != 0 && ((svio1 < 120) || (svio1 > 330))) {
 		printf("Invalid SmartVIO solution\n");
 		exit(EXIT_FAILURE);
 	}
-	if (svio2 != 0 && (svio2 < 120) || (svio2 > 330)) {
+	if (svio2 != 0 && ((svio2 < 120) || (svio2 > 330))) {
 		printf("Invalid SmartVIO solution\n");
 		exit(EXIT_FAILURE);
 	}
